@@ -1270,7 +1270,7 @@ static void lcd_move_e(
  *
  */
 
-#if ENABLED(DELTA) || ENABLED(SCARA)
+#if ENABLED(DELTA) || ENABLED(SCARA) || ENABLED(POLAR)
   #define _MOVE_XYZ_ALLOWED (axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS])
 #else
   #define _MOVE_XYZ_ALLOWED true
@@ -2181,7 +2181,7 @@ void lcd_update() {
 
       #if ENABLED(REPRAPWORLD_KEYPAD)
 
-        #if ENABLED(DELTA) || ENABLED(SCARA)
+        #if ENABLED(DELTA) || ENABLED(SCARA) || ENABLED(POLAR)
           #define _KEYPAD_MOVE_ALLOWED (axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS])
         #else
           #define _KEYPAD_MOVE_ALLOWED true

@@ -316,7 +316,17 @@ extern bool axis_homed[3]; // axis[n].is_homed
   extern float axis_scaling[3];  // Build size scaling
   void calculate_delta(float cartesian[3]);
   void calculate_SCARA_forward_Transform(float f_scara[3]);
+#elif ENABLED(POLAR)
+  extern float delta_segments_per_second;
+  extern float polar_pulley_distance;  
+  extern float polar_height;
+  extern float polar_x_offset;
+  extern float polar_y_offset;
+  extern float polar_a_offset;
+  extern float polar_b_offset;
+  void calculate_delta(float cartesian[3]);
 #endif
+
 
 #if ENABLED(Z_DUAL_ENDSTOPS)
   extern float z_endstop_adj;

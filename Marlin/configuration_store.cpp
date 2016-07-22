@@ -103,21 +103,25 @@
  * SCARA:
  *  379  M365 XYZ  axis_scaling (float x3)
  *
+ * POLAR:
+ *  391  M366 L    polar_pulley_distance (float)
+ *  395  M366 S    delta_segments_per_second (float)
+ *
  * FWRETRACT:
- *  391  M209 S    autoretract_enabled (bool)
- *  392  M207 S    retract_length (float)
- *  396  M207 W    retract_length_swap (float)
- *  400  M207 F    retract_feedrate (float)
- *  404  M207 Z    retract_zlift (float)
- *  408  M208 S    retract_recover_length (float)
- *  412  M208 W    retract_recover_length_swap (float)
- *  416  M208 F    retract_recover_feedrate (float)
+ *  399  M209 S    autoretract_enabled (bool)
+ *  400  M207 S    retract_length (float)
+ *  404  M207 W    retract_length_swap (float)
+ *  408  M207 F    retract_feedrate (float)
+ *  412  M207 Z    retract_zlift (float)
+ *  416  M208 S    retract_recover_length (float)
+ *  420  M208 W    retract_recover_length_swap (float)
+ *  424  M208 F    retract_recover_feedrate (float)
  *
  * Volumetric Extrusion:
- *  420  M200 D    volumetric_enabled (bool)
- *  421  M200 T D  filament_size (float x4) (T0..3)
+ *  428  M200 D    volumetric_enabled (bool)
+ *  429  M200 T D  filament_size (float x4) (T0..3)
  *
- *  437  This Slot is Available!
+ *  445  This Slot is Available!
  *
  */
 #include "Marlin.h"
@@ -290,6 +294,17 @@ void Config_StoreSettings()  {
     EEPROM_WRITE_VAR(i, axis_scaling); // 3 floats
   #else
     dummy = 1.0f;
+    EEPROM_WRITE_VAR(i, dummy);
+  #endif
+
+  #if ENABLED(POLAR)
+    EEPROM_WRITE_VAR(i, polar_pulley_distance);
+    EEPROM_WRITE_VAR(i, polar_height);
+    EEPROM_WRITE_VAR(i, delta_segments_per_second);
+  #else
+    dummy = 1.0f;
+    EEPROM_WRITE_VAR(i, dummy);
+    EEPROM_WRITE_VAR(i, dummy);
     EEPROM_WRITE_VAR(i, dummy);
   #endif
 
@@ -473,6 +488,20 @@ void Config_RetrieveSettings() {
     #else
       EEPROM_READ_VAR(i, dummy);
     #endif
+    
+    #if ENABLED(POLAR)
+      EEPROM_READ_VAR(i, polar_pulley_distance);
+      EEPROM_READ_VAR(i, polar_height);
+      EEPROM_READ_VAR(i, delta_segments_per_second);
+      polar_x_offset = polar_pulley_distance / 2;
+      polar_y_offset = polar_height / 2;
+      polar_a_offset = sqrtf(sq(polar_x_offset) + sq(polar_y_offset));
+      polar_b_offset = polar_a_offset;
+   #else
+      dummy = 1.0f;
+      EEPROM_READ_VAR(i, dummy);
+      EEPROM_READ_VAR(i, dummy);
+    #endif
 
     #if ENABLED(FWRETRACT)
       EEPROM_READ_VAR(i, autoretract_enabled);
@@ -535,7 +564,16 @@ void Config_ResetDefault() {
         axis_scaling[i] = 1;
     #endif
   }
-
+   #if ENABLED(POLAR)
+    polar_pulley_distance = POLAR_PULLEY_DISTANCE;
+    polar_height = POLAR_HEIGHT;
+    delta_segments_per_second = POLAR_SEGMENTS_PER_SECOND;
+    polar_x_offset = polar_pulley_distance / 2;
+    polar_y_offset = polar_height / 2;
+    polar_a_offset = sqrtf(sq(polar_x_offset) + sq(polar_y_offset));
+    polar_b_offset = polar_a_offset;
+   #endif
+   
   // steps per sq second need to be updated to agree with the units per sq second
   reset_acceleration_rates();
 
@@ -671,6 +709,20 @@ void Config_PrintSettings(bool forReplay) {
     SERIAL_EOL;
     CONFIG_ECHO_START;
   #endif // SCARA
+ 
+ 
+ #if ENABLED(POLAR)
+ if (!forReplay) {
+   SERIAL_ECHOLNPGM("POLAR parameters:");
+   CONFIG_ECHO_START;
+ }
+ SERIAL_ECHOPAIR("  M366 L", polar_pulley_distance);
+ SERIAL_ECHOPAIR(" H", polar_height);
+ SERIAL_ECHOPAIR(" S", delta_segments_per_second);
+ SERIAL_EOL;
+ CONFIG_ECHO_START;
+ #endif // SCARA 
+  
 
   if (!forReplay) {
     SERIAL_ECHOLNPGM("Maximum feedrates (mm/s):");

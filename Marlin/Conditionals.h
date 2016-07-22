@@ -323,7 +323,7 @@
   /**
    * SCARA
    */
-  #if ENABLED(SCARA)
+  #if ENABLED(SCARA) || ENABLED(POLAR)
     #undef SLOWDOWN
     #define QUICK_HOME //SCARA needs Quickhome
   #endif

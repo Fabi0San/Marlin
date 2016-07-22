@@ -105,6 +105,9 @@
   #if ENABLED(SCARA)
     #error BABYSTEPPING is not implemented for SCARA yet.
   #endif
+  #if ENABLED(POLAR)
+    #error BABYSTEPPING is not implemented for POLAR yet.
+  #endif
   #if ENABLED(DELTA) && ENABLED(BABYSTEP_XY)
     #error BABYSTEPPING only implemented for Z axis on deltabots.
   #endif

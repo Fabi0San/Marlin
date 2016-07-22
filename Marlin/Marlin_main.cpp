@@ -434,6 +434,19 @@ static uint8_t target_extruder;
   float axis_scaling[3] = { 1, 1, 1 };    // Build size scaling, default to 1
 #endif
 
+#if ENABLED(POLAR)
+  float delta_segments_per_second = POLAR_SEGMENTS_PER_SECOND;
+  float polar_pulley_distance = POLAR_PULLEY_DISTANCE;
+  float polar_height = POLAR_HEIGHT;
+  float polar_x_offset = polar_pulley_distance / 2;
+  float polar_y_offset = polar_height / 2;
+  static float delta[3] = { 0 };
+ 
+  float polar_a_offset = sqrtf(sq(polar_x_offset) + sq(polar_y_offset));
+  float polar_b_offset = polar_a_offset;    
+#endif
+
+
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
   //Variables for Filament Sensor input
   float filament_width_nominal = DEFAULT_NOMINAL_FILAMENT_DIA;  //Set nominal filament width, can be changed with M404
@@ -525,7 +538,7 @@ void gcode_M114();
   #define DEBUG_POS(PREFIX,VAR) do{ SERIAL_ECHOPGM(PREFIX); print_xyz(" > " STRINGIFY(VAR), VAR); }while(0)
 #endif
 
-#if ENABLED(DELTA) || ENABLED(SCARA)
+#if ENABLED(DELTA) || ENABLED(SCARA) || ENABLED(POLAR)
   inline void sync_plan_position_delta() {
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (DEBUGGING(LEVELING)) DEBUG_POS("sync_plan_position_delta", current_position);
@@ -814,7 +827,7 @@ void setup() {
   tp_init();    // Initialize temperature loop
   plan_init();  // Initialize planner;
 
-  #if ENABLED(DELTA) || ENABLED(SCARA)
+  #if ENABLED(DELTA) || ENABLED(SCARA) || ENABLED(POLAR)
     // Vital to init kinematic equivalent for X0 Y0 Z0
     sync_plan_position_delta();
   #endif
@@ -3663,7 +3676,7 @@ inline void gcode_G92() {
     }
   }
   if (didXYZ) {
-    #if ENABLED(DELTA) || ENABLED(SCARA)
+    #if ENABLED(DELTA) || ENABLED(SCARA) || ENABLED(POLAR)
       sync_plan_position_delta();
     #else
       sync_plan_position();
@@ -5703,6 +5716,40 @@ inline void gcode_M303() {
   }
 
 #endif // SCARA
+#if ENABLED(POLAR)
+  /**
+   * M366: POLAR calibration: L 
+   *    L = pulley distance
+   *    S = segments per second
+   */
+  inline void gcode_M366() {
+    if (code_seen('L')) polar_pulley_distance = code_value();
+    if (code_seen('H')) polar_height = code_value();
+    if (code_seen('S')) delta_segments_per_second = code_value();
+
+    polar_x_offset = polar_pulley_distance / 2;
+    polar_y_offset = polar_height / 2;
+    polar_a_offset = sqrtf(sq(polar_x_offset) + sq(polar_y_offset));
+    polar_b_offset = polar_a_offset;
+
+
+    SERIAL_ECHO_START;
+    SERIAL_ECHO(" l:");
+    SERIAL_ECHO(polar_pulley_distance);
+    SERIAL_ECHO(" h:");
+    SERIAL_ECHO(polar_height);
+    SERIAL_ECHO(" x:");
+    SERIAL_ECHO(polar_x_offset);
+    SERIAL_ECHO(" y:");
+    SERIAL_ECHO(polar_y_offset);
+    SERIAL_ECHO(" a:");
+    SERIAL_ECHO(polar_a_offset);
+    SERIAL_ECHO(" b:");
+    SERIAL_ECHO(polar_b_offset);
+    SERIAL_ECHO(" s:");
+    SERIAL_ECHOLN(delta_segments_per_second);
+  }
+#endif
 
 #if ENABLED(EXT_SOLENOID)
 
@@ -6915,6 +6962,12 @@ void process_next_command() {
           gcode_M365();
           break;
       #endif // SCARA
+      
+      #if ENABLED(POLAR)
+        case 366: // M366 Set POLAR calibration
+        gcode_M366();
+        break;
+      #endif
 
       case 400: // M400 finish all moves
         gcode_M400();
@@ -7293,7 +7346,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // PREVENT_DANGEROUS_EXTRUDE
 
-#if ENABLED(DELTA) || ENABLED(SCARA)
+#if ENABLED(DELTA) || ENABLED(SCARA) || ENABLED(POLAR)
 
   inline bool prepare_move_delta(float target[NUM_AXIS]) {
     float difference[NUM_AXIS];
@@ -7322,15 +7375,14 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
         adjust_delta(target);
       #endif
 
-      //SERIAL_ECHOPGM("target[X_AXIS]="); SERIAL_ECHOLN(target[X_AXIS]);
-      //SERIAL_ECHOPGM("target[Y_AXIS]="); SERIAL_ECHOLN(target[Y_AXIS]);
-      //SERIAL_ECHOPGM("target[Z_AXIS]="); SERIAL_ECHOLN(target[Z_AXIS]);
-      //SERIAL_ECHOPGM("delta[X_AXIS]="); SERIAL_ECHOLN(delta[X_AXIS]);
-      //SERIAL_ECHOPGM("delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
-      //SERIAL_ECHOPGM("delta[Z_AXIS]="); SERIAL_ECHOLN(delta[Z_AXIS]);
-
       plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], target[E_AXIS], feedrate / 60 * feedrate_multiplier / 100.0, active_extruder);
     }
+          SERIAL_ECHOPGM("target[X_AXIS]="); SERIAL_ECHOLN(target[X_AXIS]);
+          SERIAL_ECHOPGM("target[Y_AXIS]="); SERIAL_ECHOLN(target[Y_AXIS]);
+          SERIAL_ECHOPGM("target[Z_AXIS]="); SERIAL_ECHOLN(target[Z_AXIS]);
+          SERIAL_ECHOPGM("delta[X_AXIS]="); SERIAL_ECHOLN(delta[X_AXIS]);
+          SERIAL_ECHOPGM("delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
+          SERIAL_ECHOPGM("delta[Z_AXIS]="); SERIAL_ECHOLN(delta[Z_AXIS]);
     return true;
   }
 
@@ -7379,7 +7431,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // DUAL_X_CARRIAGE
 
-#if DISABLED(DELTA) && DISABLED(SCARA)
+#if DISABLED(DELTA) && DISABLED(SCARA) && DISABLED(POLAR)
 
   inline bool prepare_move_cartesian() {
     // Do not use feedrate_multiplier for E or Z only moves
@@ -7415,7 +7467,7 @@ void prepare_move() {
 
   #if ENABLED(SCARA)
     if (!prepare_move_scara(destination)) return;
-  #elif ENABLED(DELTA)
+  #elif ENABLED(DELTA) || ENABLED(POLAR)
     if (!prepare_move_delta(destination)) return;
   #endif
 
@@ -7423,7 +7475,7 @@ void prepare_move() {
     if (!prepare_move_dual_x_carriage()) return;
   #endif
 
-  #if DISABLED(DELTA) && DISABLED(SCARA)
+  #if DISABLED(DELTA) && DISABLED(SCARA) && DISABLED(POLAR)
     if (!prepare_move_cartesian()) return;
   #endif
 
@@ -7544,7 +7596,7 @@ void plan_arc(
 
     clamp_to_software_endstops(arc_target);
 
-    #if ENABLED(DELTA) || ENABLED(SCARA)
+    #if ENABLED(DELTA) || ENABLED(SCARA) || ENABLED(POLAR)
       calculate_delta(arc_target);
       #if ENABLED(AUTO_BED_LEVELING_FEATURE)
         adjust_delta(arc_target);
@@ -7556,7 +7608,7 @@ void plan_arc(
   }
 
   // Ensure last segment arrives at target location.
-  #if ENABLED(DELTA) || ENABLED(SCARA)
+  #if ENABLED(DELTA) || ENABLED(SCARA) || ENABLED(POLAR)
     calculate_delta(target);
     #if ENABLED(AUTO_BED_LEVELING_FEATURE)
       adjust_delta(target);
@@ -7687,6 +7739,21 @@ void plan_arc(
   }
 
 #endif // SCARA
+
+#if ENABLED(POLAR)
+
+  void calculate_delta(float cartesian[3]) {
+    //reverse kinematics.
+    // Perform reversed kinematics, and place results in delta[3]
+    float polar_x = polar_x_offset + cartesian[X_AXIS];
+    float polar_y = polar_y_offset - cartesian[Y_AXIS]; //Y is inverted
+    
+    delta[X_AXIS] = sqrtf(sq(polar_x) + sq((polar_y))) - polar_a_offset;
+    delta[Y_AXIS] = sqrtf(sq(polar_pulley_distance - polar_x) + sq((polar_y))) - polar_b_offset;
+    delta[Z_AXIS] = cartesian[Z_AXIS]; 
+  }
+
+#endif // POLAR
 
 #if ENABLED(TEMP_STAT_LEDS)
 
