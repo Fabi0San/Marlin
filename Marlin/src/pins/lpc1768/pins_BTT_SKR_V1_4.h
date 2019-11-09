@@ -310,6 +310,9 @@
     #endif // !FYSETC_MINI_12864
 
   #endif
+#else // !HAS_SPI_LCD
+
+#define PS_ON_PIN          P1_30   // (12)
 
 #endif // HAS_SPI_LCD
 
