@@ -353,7 +353,7 @@ void MarlinUI::draw_status_screen() {
     #if ENABLED(DOGM_SD_PERCENT)
       static char progress_string[5];
     #endif
-    static uint8_t lastElapsed = 0, lastProgress = 0;
+    static uint8_t lastElapsed = 0xFF, lastProgress = 0xFF;
     static u8g_uint_t elapsed_x_pos = 0, progress_bar_solid_width = 0;
     static char elapsed_string[16];
     #if ENABLED(SHOW_REMAINING_TIME)
@@ -388,17 +388,21 @@ void MarlinUI::draw_status_screen() {
       #endif
       heat_bits = new_bits;
     #endif
+
     const xyz_pos_t lpos = current_position.asLogical();
-    if (showxy)
+    strcpy(zstring, ftostr52sp(lpos.z));
+
+    if (showxy) {
       strcpy(xstring, ftostr4sign(lpos.x));
+      strcpy(ystring, ftostr4sign(lpos.y));
+    }
     else {
       #if ENABLED(LCD_SHOW_E_TOTAL)
         const uint8_t escale = e_move_accumulator >= 100000.0f ? 10 : 1; // After 100m switch to cm
         sprintf_P(xstring, PSTR("%ld%cm"), uint32_t(_MAX(e_move_accumulator, 0.0f)) / escale, escale == 10 ? 'c' : 'm'); // 1234567mm
       #endif
     }
-    strcpy(ystring, ftostr4sign(lpos.y));
-    strcpy(zstring, ftostr52sp( lpos.z));
+
     #if ENABLED(FILAMENT_LCD_DISPLAY)
       strcpy(wstring, ftostr12ns(filwidth.measured_mm));
       strcpy(mstring, i16tostr3(planner.volumetric_percent(parser.volumetric_enabled)));
@@ -438,7 +442,7 @@ void MarlinUI::draw_status_screen() {
             ));
           }
           #if BOTH(SHOW_REMAINING_TIME, ROTATE_PROGRESS_DISPLAY) // Tri-state progress display mode
-            progress_x_pos = _SD_INFO_X(strlen(progress_string));
+            progress_x_pos = _SD_INFO_X(strlen(progress_string) + 1);
           #endif
         #endif
       }
@@ -451,19 +455,25 @@ void MarlinUI::draw_status_screen() {
 
         #if ENABLED(SHOW_REMAINING_TIME)
           if (!(ev & 0x3)) {
-            duration_t estimation = elapsed.value * (100 * (PROGRESS_SCALE) - progress) / progress;
-            if (estimation.value == 0) {
+            uint32_t timeval = (0
+              #if BOTH(LCD_SET_PROGRESS_MANUALLY, USE_M73_REMAINING_TIME)
+                + get_remaining_time()
+              #endif
+            );
+            if (!timeval && progress > 0) timeval = elapsed.value * (100 * (PROGRESS_SCALE) - progress) / progress;
+            if (!timeval) {
               estimation_string[0] = '\0';
               estimation_x_pos = _SD_INFO_X(0);
             }
             else {
+              duration_t estimation = timeval;
               const bool has_days = (estimation.value >= 60*60*24L);
               const uint8_t len = estimation.toDigital(estimation_string, has_days);
-              #if BOTH(DOGM_SD_PERCENT, ROTATE_PROGRESS_DISPLAY)
-                estimation_x_pos = _SD_INFO_X(len);
-              #else
-                estimation_x_pos = _SD_INFO_X(len + 1);
-              #endif
+              estimation_x_pos = _SD_INFO_X(len
+                #if !BOTH(DOGM_SD_PERCENT, ROTATE_PROGRESS_DISPLAY)
+                  + 1
+                #endif
+              );
             }
           }
         #endif
