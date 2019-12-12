@@ -2289,7 +2289,7 @@
    * IMPROVE_HOMING_RELIABILITY tunes acceleration and jerk when
    * homing and adds a guard period for endstop triggering.
    */
-  //#define SENSORLESS_HOMING // StallGuard capable drivers only
+  #define SENSORLESS_HOMING // StallGuard capable drivers only
 
   /**
    * Use StallGuard2 to probe the bed with the nozzle.
@@ -2332,7 +2332,11 @@
    *   stepperY.intpol(0); \
    * }
    */
-  #define TMC_ADV() {  }
+  //#define TMC_ADV() { 
+  //    stepperX.diag1_index(true); 
+  //    stepperY.diag1_index(true); 
+  //    stepperZ.diag1_index(true); 
+  //    }
 
 #endif // HAS_TRINAMIC
 
