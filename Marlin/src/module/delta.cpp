@@ -30,6 +30,7 @@
 
 #include "delta.h"
 #include "motion.h"
+#include "stepper.h"
 
 // For homing:
 #include "planner.h"
@@ -267,6 +268,10 @@ void home_delta() {
   homeaxis(A_AXIS);
   homeaxis(B_AXIS);
   homeaxis(C_AXIS);
+
+  SERIAL_ECHOPAIR(" " STRINGIFY(A) ":", stepper.triggered_position(_AXIS(A)));
+  SERIAL_ECHOPAIR(" " STRINGIFY(B) ":", stepper.triggered_position(_AXIS(B)));
+  SERIAL_ECHOLNPAIR(" " STRINGIFY(C) ":", stepper.triggered_position(_AXIS(C)));
 
   // Set all carriages to their home positions
   // Do this here all at once for Delta, because
